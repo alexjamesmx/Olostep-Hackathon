@@ -3,6 +3,7 @@ const router = express.Router();
 const { chromium } = require("playwright");
 const OpenAI = require("openai");
 const stopword = require("stopword");
+const Website = require("../db/models/Website");
 
 const tf = require("@tensorflow/tfjs");
 
@@ -51,12 +52,6 @@ router.post("/", async (req, res) => {
       elements.map((el) => el.innerText)
     );
 
-    console.log("Headings:", headings);
-    // Clean the content using NLP techniques
-    // const filteredHeadings = await cleanAndFilterContent(headings);
-    // const filteredParagraphs = await cleanAndFilterContent(paragraphs);
-
-    // Use OpenAI for summarization on the cleaned content
     const openAISummary = await summarizeWithOpenAI(
       url,
       title,
@@ -65,6 +60,22 @@ router.post("/", async (req, res) => {
       paragraphs
     );
     await browser.close();
+
+    console.log("Saving summary to database");
+
+    const summaryData = new Website({
+      websiteLink: url,
+      title,
+      description,
+      headings,
+      paragraphs,
+      summary: openAISummary,
+    });
+
+    //insert
+    await summaryData.save();
+
+    console.log("Saved");
 
     res.json({
       title,
