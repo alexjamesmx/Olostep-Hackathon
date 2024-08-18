@@ -8,12 +8,19 @@ const dotenv = require("dotenv");
 
 dotenv.config();
 //
+const browser = await chromium.launch({
+  executablePath: "/app/browsers/chromium-1129/chrome-linux/chrome",
+});
+
+const context = await browser.newContext({
+  ignoreHTTPSErrors: true,
+  bypassCSP: true,
+});
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
   dangerouslyAllowBrowser: true,
 });
-
 router.post("/", async (req, res) => {
   const url = req.body.url;
 
@@ -21,44 +28,37 @@ router.post("/", async (req, res) => {
     return res.status(400).json({ error: "URL is required" });
   }
 
-  const browser = await chromium.launch({
-    executablePath: "/app/browsers/chromium-1129/chrome-linux/chrome",
-  });
-  const context = await browser.newContext({
-    ignoreHTTPSErrors: true,
-  });
+  let page;
 
   try {
-    const page = await context.newPage();
-    await page.goto(url, { waitUntil: "load" });
+    // Create a new page instance for each request
+    page = await context.newPage();
+    await page.goto(url, { waitUntil: "networkidle" });
 
     const title = await page.title();
     const description = await page.$eval(
       'meta[name="description"]',
       (element) => element.content
     );
-    // Scrape headings
+
     const headings = await page.$$eval("h1, h2, h3, h4, h5, h6", (elements) =>
       elements
         .map((el) => el.innerText.trim())
         .filter((text) => text.length > 0)
     );
 
-    // Scrape paragraphs
     const paragraphs = await page.$$eval("p", (elements) =>
       elements
         .map((el) => el.innerText.trim())
         .filter((text) => text.length > 0)
     );
 
-    // Scrape lists (unordered and ordered)
     const lists = await page.$$eval("ul, ol", (elements) =>
       elements
         .map((el) => el.innerText.trim())
         .filter((text) => text.length > 0)
     );
 
-    // Scrape plain text from divs or spans (not part of a specific element type)
     const rawText = await page.$$eval("div, span", (elements) =>
       elements
         .map((el) => el.innerText.trim())
@@ -89,7 +89,6 @@ router.post("/", async (req, res) => {
       summary: openAISummary,
     });
 
-    //insert
     await summaryData.save();
 
     console.log("Saved");
@@ -100,10 +99,11 @@ router.post("/", async (req, res) => {
     });
   } catch (error) {
     console.error("Error during scraping:", error);
-
     res.status(500).json({ error: "Error during scraping" });
   } finally {
-    await browser.close();
+    if (page) {
+      await page.close(); // Close the page to reset the state for the next request
+    }
   }
 });
 async function cleanAndFilterContent(textArray) {
