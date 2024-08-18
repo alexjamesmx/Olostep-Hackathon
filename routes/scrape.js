@@ -24,7 +24,8 @@ module.exports = (context) => {
 
     try {
       page = await context.newPage();
-      await page.goto(url, { waitUntil: "networkidle" });
+
+      await navigateWithRetry(page, url);
 
       const title = await page.title();
 
@@ -64,11 +65,81 @@ module.exports = (context) => {
           .filter((text) => text.length > 0)
       );
 
+      //links from a tags and buttons
+      // Extract links from <a>, <button>, and elements with onclick attributes
+      let linksWithTitles = await page.$$eval(
+        "a, button, [onclick], [data-link]",
+        (elements) =>
+          elements
+            .map((el) => {
+              let link = "";
+              let title =
+                el.innerText.trim() ||
+                el.getAttribute("title") ||
+                el.getAttribute("aria-label");
+
+              // Get href from <a> tags
+              if (el.tagName.toLowerCase() === "a" && el.href) {
+                link = el.href;
+              }
+
+              // Get links from buttons with data-link or onclick attributes
+              if (el.tagName.toLowerCase() === "button") {
+                if (el.dataset.link) {
+                  link = el.dataset.link; // Custom data-link attribute
+                } else if (el.onclick) {
+                  const match = el.onclick
+                    .toString()
+                    .match(/https?:\/\/[^\s"]+/);
+                  if (match) link = match[0];
+                }
+              }
+
+              // Get links from elements with onclick attributes
+              if (el.hasAttribute("onclick")) {
+                const match = el
+                  .getAttribute("onclick")
+                  .match(/https?:\/\/[^\s"]+/);
+                if (match) link = match[0];
+              }
+
+              // Return object with both link and title
+              return link.trim() ? { link, title: title || link } : null;
+            })
+            .filter((item) => item)
+      );
+
+      const bestImages = await page.$$eval(
+        "img",
+        (elements) =>
+          elements
+            .filter((el) => el !== null) // Filter out null elements
+            .map((el) => {
+              const src = el?.src;
+              const alt = el?.alt || "";
+              const width = el?.naturalWidth || 0;
+              const height = el?.naturalHeight || 0;
+
+              if (!src || alt === "" || width === 0 || height === 0) {
+                return null;
+              }
+
+              const area = width * height;
+              return { src, alt, area };
+            })
+            .filter((img) => img !== null && img.area > 0) // Filter out null values and images with no area
+            .sort((a, b) => b.area - a.area) // Sort images by area (descending)
+            .slice(0, 10) // Take the top 10 images
+      );
+
+      console.log("Best images:", bestImages);
+
       // use at maximum 10 paragraphs, 20 raw text, 10 headings, 10 lists
-      headings = headings.slice(0, 10);
-      paragraphs = paragraphs.slice(0, 10);
-      lists = lists.slice(0, 10);
-      rawText = rawText.slice(0, 20);
+      headings = headings.slice(0, 50);
+      paragraphs = paragraphs.slice(0, 50);
+      lists = lists.slice(0, 50);
+      rawText = rawText.slice(0, 50);
+      linksWithTitles = linksWithTitles.slice(0, 15);
 
       const filteredHeadings = await cleanAndFilterContent(headings);
       const filteredParagraphs = await cleanAndFilterContent(paragraphs);
@@ -80,28 +151,26 @@ module.exports = (context) => {
         title,
         description,
         filteredHeadings,
-        filteredLists
+        filteredLists,
+        filteredRawText,
+        linksWithTitles,
+        bestImages
       );
-
-      console.log("Saving summary to database");
 
       const summaryData = new Website({
         websiteLink: url,
-        summary: openAISummary,
+        website: openAISummary,
       });
 
+      console.log("Saving data to MongoDB");
       await summaryData.save();
-
       console.log("Saved");
 
       if (openAISummary === "") {
         return res.status(500).json({ error: "Response is empty" });
       }
 
-      res.json({
-        title,
-        openAISummary,
-      });
+      res.json(openAISummary);
     } catch (error) {
       console.error("Error during scraping:", error);
       res.status(500).json({ error: "Internal Server Error: ", error });
@@ -131,7 +200,9 @@ module.exports = (context) => {
     description,
     headings,
     lists,
-    rawText
+    rawText,
+    usefulLinks,
+    bestImages
   ) {
     const headingsContent = headings.join(",");
     const listsContent = lists.join(",");
@@ -143,15 +214,54 @@ module.exports = (context) => {
       `Headings: ${headingsContent}`,
       `Lists: ${listsContent}`,
       `Raw Text: ${rawText}`,
+      `Useful Links: ${usefulLinks
+        .map((link) => {
+          return `${link.title} - ${link.link}`;
+        })
+        .join(",")},`,
+      `Best Images: ${bestImages
+        .map((img) => {
+          return `image alt - ${img.alt}, image src - ${img.src}`;
+        })
+        .join(",")}`,
     ];
 
-    console.log("Content:", content);
-
     try {
-      let prompt = `Please provide a concise summary of the following website content and the website category or label it falls (sports, e-commerce, news, bloc, etc), return only a json object with this format: {sumamry, label}. no special characters:\n\n${content}. If  you can't summarize the content or find a category, return empty value mapped to the respecitve json key.`;
-      let systemPrompt =
-        "You are a web scraper expert. Provide a brief and concise summary of the website content, focusing only on key points and avoiding unnecessary details.";
-      const summary_response = await openai.chat.completions.create({
+      let prompt = `Please web scrape following website: \n${content}.
+      
+      `;
+      let systemPrompt = `You are a web scraper expert.
+         Provide a brief and concise summary of the website content, the categories/labels it falls (sports, blog, e-commerce, paper, news, etc), the best images if any, the key points of the content as lists of titles and values, providing a brief description of each and useful links if any or useful, lastly, provide related content (similar best real websites) if any. 
+         Focusing only on key points and avoiding unnecessary details.
+          Always return your response in the following strict JSON format without any additional text or commentary:
+          { 
+            "website" : [{
+              "name" : "str",
+              "summary": "str",
+              "labels": [str],
+              "images": [{
+                "src": "str",
+                "alt": "str",
+              }],
+              "keyPoints": [
+                {
+                  "title": [str],
+                  "value": [str],
+                }
+              ],
+              "useFullLinks": [{
+                "title": "str",
+                "url": "str"
+              }],
+              "relatedContent": [{
+                "title": "str",
+                "url": "str"
+              }]
+            }]
+          }
+          If  you can't summarize the content or find a category, return the respective key as empty string. 
+         `;
+      const messageContent = await openai.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [
           {
@@ -164,11 +274,41 @@ module.exports = (context) => {
           },
         ],
       });
+
+      console.log(
+        "OpenAI response:",
+        messageContent.choices[0].message.content
+      );
+
+      // Extract the JSON content
+      const jsonString = messageContent.choices[0].message.content;
+
+      // Parse the JSON string to ensure it's valid JSON
+      const jsonResponse = JSON.parse(jsonString);
+
+      return jsonResponse;
     } catch (error) {
       console.error("Error during OpenAI summarization:", error);
       return "Error during OpenAI summarization";
     }
   }
 
+  const navigateWithRetry = async (page, url, retries = 3, timeout = 60000) => {
+    for (let i = 0; i < retries; i++) {
+      try {
+        await page.goto(url, { waitUntil: "networkidle", timeout: timeout });
+        return; // If successful, exit the function
+      } catch (error) {
+        console.error(
+          `Error during page navigation (attempt ${i + 1}):`,
+          error
+        );
+        if (i === retries - 1) {
+          throw error; // Throw error if last attempt fails
+        }
+        console.log(`Retrying... (${i + 1}/${retries})`);
+      }
+    }
+  };
   return router;
 };
