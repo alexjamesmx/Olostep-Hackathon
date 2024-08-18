@@ -1,35 +1,66 @@
-import React from 'react';
+import { useState, useEffect } from 'react';
 import './App.css'; 
 
-function SearchForm() {
+function SearchPage() {
+  const colors = [
+    '#538392', '#6295A2', '#80B9AD', '#B3E2A7',
+    'rgb(83, 131, 146)', 'rgb(98, 149, 162)', 'rgb(128, 185, 173)', 'rgb(179, 226, 167)'
+  ];
+
+  const [labels, setLabels] = useState([]);
+
+  const summary = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam nec purus nec nunc ultricies ultricies. Nullam nec purus nec nunc ultricies ultricies.';
+
+  const labelsData = [
+    {text: 'Technology'},
+    {text: 'Business'},
+    {text: 'Health'},
+  ];
+
+  useEffect(() => {
+    // Set labels with colors
+    const updatedLabels = labelsData.map((label, index) => ({
+      text: label.text,
+      color: colors[index % colors.length] // Rotate through colors
+    }));
+    setLabels(updatedLabels);
+  }, []); // Empty dependency array ensures this runs once when the component mounts
+
   return (
-    <div className="flex flex-col justify-center items-center min-h-screen bg-gray-100">
-      <h1 className="text-3xl font-bold mb-6 text-gray-800">Search</h1>
-      <form className="max-w-md w-full bg-white p-6 rounded-lg shadow-lg">
-        <label htmlFor="default-search" className="sr-only">Search</label>
-        <div className="relative">
-          <div className="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
-            <svg className="w-4 h-4 text-gray-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 20">
-              <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m19 19-4-4m0-7A7 7 0 1 1 1 8a7 7 0 0 1 14 0Z"/>
-            </svg>
-          </div>
-          <input
-            type="search"
-            id="default-search"
-            className="block w-full p-4 ps-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="Enter the URL for webscraping"
-            required
-          />
-          <button
-            type="submit"
-            className="absolute end-2.5 bottom-2.5 bg-blue-700 text-white hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-4 py-2"
-          >
-            Search
-          </button>
-        </div>
+    <div className="flex flex-col justify-center items-center min-h-screen bg-gray-100 p-4">
+      <h1 className="text-4xl font-semibold text-gray-800 mb-8">Search for Information</h1>
+      <form className="w-full max-w-lg flex items-center mb-8">
+        <input
+          type="text"
+          className="flex-grow px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Enter the URL for webscraping"
+        />
+        <button
+          type="submit"
+          className="ml-4 px-6 py-2 text-white bg-[#538392] rounded-lg shadow-md hover:bg-[#3e5b65] transition-all duration-300"
+        >
+          Search
+        </button>
       </form>
+      <div className="w-full max-w-lg bg-white p-6 rounded-lg shadow-lg">
+        <h2 className="text-xl font-semibold text-gray-800 mb-4">Summary of the website</h2>
+        <p className="text-lg text-gray-700 mb-4">
+          {summary}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {labels.map((label, index) => (
+            <span
+              key={index}
+              className="px-3 py-1 text-white rounded-full"
+              style={{ backgroundColor: label.color }}
+            >
+              {label.text}
+            </span>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
 
-export default SearchForm;
+export default SearchPage;
