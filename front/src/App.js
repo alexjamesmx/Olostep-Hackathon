@@ -28,7 +28,7 @@ function SearchPage() {
 
   return (
     <div className="flex flex-col justify-center items-center min-h-screen bg-gray-100 p-4">
-      <h1 className="text-4xl font-semibold text-gray-800 mb-8">Easy webscraping</h1>
+      <h1 className="text-4xl font-semibold text-gray-800 mb-8">Easy  webscraping</h1>
       <form className="w-full max-w-lg flex items-center mb-8">
         <input
           type="text"
