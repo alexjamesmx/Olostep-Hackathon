@@ -4,7 +4,6 @@ const { chromium } = require("playwright");
 const OpenAI = require("openai");
 const stopword = require("stopword");
 const Website = require("../db/models/Website");
-
 const dotenv = require("dotenv");
 
 dotenv.config();
@@ -23,7 +22,7 @@ router.post("/", async (req, res) => {
   }
 
   try {
-    const browser = await chromium.launch();
+    const browser = await chromium.launch((executablePath = "/browsers"));
     const page = await browser.newPage();
     await page.goto(url);
 
