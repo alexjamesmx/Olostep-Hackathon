@@ -3,6 +3,7 @@ const dotenv = require("dotenv");
 const mongoose = require("mongoose");
 const scrapeRouter = require("./routes/scrape"); // Importar la ruta scrape
 const { initializeBrowser } = require("./utils/browser");
+const cors = require("cors");
 
 dotenv.config();
 
@@ -10,6 +11,11 @@ async function startServer() {
   const app = express();
 
   app.use(express.json());
+  app.use(
+    cors({
+      origin: "*",
+    })
+  );
 
   app.get("/", (req, res) => {
     res.send("Hello World");
