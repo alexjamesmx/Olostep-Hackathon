@@ -3,6 +3,7 @@ const OpenAI = require("openai");
 const stopword = require("stopword");
 const Website = require("../db/models/Website");
 const dotenv = require("dotenv");
+const jwt = require("jsonwebtoken");
 
 dotenv.config();
 
@@ -15,6 +16,15 @@ module.exports = (context) => {
   const router = express.Router();
   router.post("/", async (req, res) => {
     const url = req.body.url;
+    const token = req.headers.authorization.split(" ")[1];
+
+    if (!token) {
+      return res.status(401).json({ error: "No token provided" });
+    }
+
+    // Verify the token and extract the user ID
+    const decoded = jwt.verify(token, process.env.JWT_SECRET); // Ensure you have JWT_SECRET in your environment variables
+    const userId = decoded.id; // This assumes that your token contains an 'id' field
 
     if (!url) {
       return res.status(400).json({ error: "URL is required" });
@@ -157,7 +167,23 @@ module.exports = (context) => {
         bestImages
       );
 
+      //replace  the website data from the database if it already exists
+
+      const existingWebsite = await Website.findOne({
+        userId: userId,
+        websiteLink: url,
+      });
+
+      if (existingWebsite) {
+        console.log("Website already exists, updating the data");
+        existingWebsite.website = openAISummary;
+        await existingWebsite.save();
+        console.log("Updated");
+        return res.json(openAISummary);
+      }
+
       const summaryData = new Website({
+        userId: userId,
         websiteLink: url,
         website: openAISummary,
       });
@@ -181,12 +207,44 @@ module.exports = (context) => {
     }
   });
 
-  router.get("/", async (req, res) => {
+  router.get("/history", async (req, res) => {
     try {
-      const websites = await Website.find();
+      const token = req.headers.authorization.split(" ")[1];
+
+      if (!token) {
+        return res.status(401).json({ error: "No token provided" });
+      }
+
+      // Verify the token and extract the user ID
+      const decoded = jwt.verify(token, process.env.JWT_SECRET); // Ensure you have JWT_SECRET in your environment variables
+      const userId = decoded.id; // This assumes that your token contains an 'id' field
+
+      // Find the websites related to this user
+      const websites = await Website.find({ userId: userId }); // Assuming you have a 'user' field in your Website model that stores the user's ID
       res.json(websites);
     } catch (error) {
       console.error("Error fetching websites:", error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  });
+
+  router.delete("/history", async (req, res) => {
+    try {
+      const token = req.headers.authorization.split(" ")[1];
+
+      if (!token) {
+        return res.status(401).json({ error: "No token provided" });
+      }
+
+      // Verify the token and extract the user ID
+      const decoded = jwt.verify(token, process.env.JWT_SECRET); // Ensure you have JWT_SECRET in your environment variables
+      const userId = decoded.id; // This assumes that your token contains an 'id' field
+
+      // Delete all websites related to this user
+      await Website.deleteMany({ userId: userId }); // Assuming you have a 'user' field in your Website model that stores the user's ID
+      res.json({ message: "Deleted all websites" });
+    } catch (error) {
+      console.error("Error deleting websites:", error);
       res.status(500).json({ error: "Internal Server Error" });
     }
   });
@@ -243,6 +301,7 @@ module.exports = (context) => {
       let systemPrompt = `You are a web scraper expert.
          Provide a brief and concise summary of the website content, the categories/labels it falls (sports, blog, e-commerce, paper, news, etc), the best images if any, the key points of the content as lists of titles and values, providing a brief description of each and useful links if any or useful, lastly, provide related content (similar best real websites) if any. 
          Focusing only on key points and avoiding unnecessary details.
+         \nIf  you can't summarize the content or find a category, return the respective key as empty string. 
           Always return your response in the following strict JSON format without any additional text or commentary:
           { 
             "website" : [{
@@ -269,7 +328,7 @@ module.exports = (context) => {
               }]
             }]
           }
-          If  you can't summarize the content or find a category, return the respective key as empty string. 
+
          `;
       const messageContent = await openai.chat.completions.create({
         model: "gpt-4o-mini",

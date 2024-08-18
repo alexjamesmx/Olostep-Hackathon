@@ -2,6 +2,7 @@ const express = require("express");
 const dotenv = require("dotenv");
 const mongoose = require("mongoose");
 const scrapeRouter = require("./routes/scrape"); // Importar la ruta scrape
+const authRouter = require("./routes/auth");
 const { initializeBrowser } = require("./utils/browser");
 const cors = require("cors");
 
@@ -26,6 +27,7 @@ async function startServer() {
 
   // Pass the context to the scrape router
   app.use("/scrape", scrapeRouter(context));
+  app.use("/auth", authRouter);
 
   // Connect to MongoDB
   mongoose
