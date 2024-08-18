@@ -13,7 +13,6 @@ const openai = new OpenAI({
 
 module.exports = (context) => {
   const router = express.Router();
-
   router.post("/", async (req, res) => {
     const url = req.body.url;
 
@@ -28,10 +27,18 @@ module.exports = (context) => {
       await page.goto(url, { waitUntil: "networkidle" });
 
       const title = await page.title();
-      const description = await page.$eval(
-        'meta[name="description"]',
-        (element) => element.content
-      );
+
+      // Gracefully handle missing meta description
+      const descriptionElement = await page.$('meta[name="description"]');
+      let description = "";
+      if (descriptionElement) {
+        description = await page.$eval(
+          'meta[name="description"]',
+          (element) => element.content
+        );
+      } else {
+        console.log("Description meta tag not found.");
+      }
 
       const headings = await page.$$eval("h1, h2, h3, h4, h5, h6", (elements) =>
         elements
