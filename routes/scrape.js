@@ -8,6 +8,15 @@ const dotenv = require("dotenv");
 
 dotenv.config();
 
+const browser = chromium.launch({
+  executablePath: "/app/browsers/chromium-1129/chrome-linux/chrome",
+});
+
+const context = browser.newContext({
+  ignoreHTTPSErrors: true,
+  bypassCSP: true,
+});
+
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
   dangerouslyAllowBrowser: true,
@@ -21,15 +30,6 @@ router.post("/", async (req, res) => {
   }
 
   let page;
-
-  const browser = await chromium.launch({
-    executablePath: "/app/browsers/chromium-1129/chrome-linux/chrome",
-  });
-
-  const context = await browser.newContext({
-    ignoreHTTPSErrors: true,
-    bypassCSP: true,
-  });
 
   try {
     page = await context.newPage();
@@ -102,8 +102,6 @@ router.post("/", async (req, res) => {
     res.status(500).json({ error: "Error during scraping" });
   } finally {
     page.close();
-    context.close();
-    browser.close();
   }
 });
 async function cleanAndFilterContent(textArray) {
