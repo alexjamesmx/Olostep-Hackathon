@@ -1,7 +1,9 @@
 const { chromium } = require("playwright");
 
 async function initializeBrowser() {
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({
+    executablePath: "/app/browsers/chromium-1129/chrome-linux/chrome",
+  });
 
   const context = await browser.newContext({
     ignoreHTTPSErrors: true,
