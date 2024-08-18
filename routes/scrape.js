@@ -5,9 +5,6 @@ const OpenAI = require("openai");
 const stopword = require("stopword");
 const Website = require("../db/models/Website");
 
-const tf = require("@tensorflow/tfjs");
-
-const use = require("@tensorflow-models/universal-sentence-encoder");
 const dotenv = require("dotenv");
 
 dotenv.config();
@@ -15,12 +12,6 @@ dotenv.config();
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
   dangerouslyAllowBrowser: true,
-});
-
-let model;
-use.load().then((m) => {
-  model = m;
-  console.log("Universal Sentence Encoder model loaded.");
 });
 
 router.post("/", async (req, res) => {
