@@ -40,29 +40,35 @@ module.exports = (context) => {
         console.log("Description meta tag not found.");
       }
 
-      const headings = await page.$$eval("h1, h2, h3, h4, h5, h6", (elements) =>
+      let headings = await page.$$eval("h1, h2, h3, h4, h5, h6", (elements) =>
         elements
           .map((el) => el.innerText.trim())
           .filter((text) => text.length > 0)
       );
 
-      const paragraphs = await page.$$eval("p", (elements) =>
+      let paragraphs = await page.$$eval("p", (elements) =>
         elements
           .map((el) => el.innerText.trim())
           .filter((text) => text.length > 0)
       );
 
-      const lists = await page.$$eval("ul, ol", (elements) =>
+      let lists = await page.$$eval("ul, ol", (elements) =>
         elements
           .map((el) => el.innerText.trim())
           .filter((text) => text.length > 0)
       );
 
-      const rawText = await page.$$eval("div, span", (elements) =>
+      let rawText = await page.$$eval("div, span", (elements) =>
         elements
           .map((el) => el.innerText.trim())
           .filter((text) => text.length > 0)
       );
+
+      // use at maximum 10 paragraphs, 20 raw text, 10 headings, 10 lists
+      headings = headings.slice(0, 10);
+      paragraphs = paragraphs.slice(0, 10);
+      lists = lists.slice(0, 10);
+      rawText = rawText.slice(0, 20);
 
       const filteredHeadings = await cleanAndFilterContent(headings);
       const filteredParagraphs = await cleanAndFilterContent(paragraphs);
@@ -88,13 +94,17 @@ module.exports = (context) => {
 
       console.log("Saved");
 
+      if (openAISummary === "") {
+        return res.status(500).json({ error: "Response is empty" });
+      }
+
       res.json({
         title,
         openAISummary,
       });
     } catch (error) {
       console.error("Error during scraping:", error);
-      res.status(500).json({ error: "Error during scraping" });
+      res.status(500).json({ error: "Internal Server Error: ", error });
     } finally {
       if (page) {
         await page.close();
@@ -120,28 +130,28 @@ module.exports = (context) => {
     title,
     description,
     headings,
-    lists
+    lists,
+    rawText
   ) {
     const headingsContent = headings.join(",");
     const listsContent = lists.join(",");
 
-    console.log("Headings content:", headingsContent);
-
-    const content = [
+    let content = [
       `Website: ${websiteLink}`,
       `Title: ${title}`,
       `Description: ${description}`,
       `Headings: ${headingsContent}`,
       `Lists: ${listsContent}`,
+      `Raw Text: ${rawText}`,
     ];
 
     console.log("Content:", content);
 
     try {
-      const prompt = `Please provide a concise summary of the following website content, return only a summary. no special characters:\n\n${content}`;
-      const systemPrompt =
+      let prompt = `Please provide a concise summary of the following website content and the website category or label it falls (sports, e-commerce, news, bloc, etc), return only a json object with this format: {sumamry, label}. no special characters:\n\n${content}. If  you can't summarize the content or find a category, return empty value mapped to the respecitve json key.`;
+      let systemPrompt =
         "You are a web scraper expert. Provide a brief and concise summary of the website content, focusing only on key points and avoiding unnecessary details.";
-      const response = await openai.chat.completions.create({
+      const summary_response = await openai.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [
           {
@@ -154,9 +164,6 @@ module.exports = (context) => {
           },
         ],
       });
-
-      console.log("OpenAI response:", response.choices[0].message.content);
-      return response.choices[0].message.content;
     } catch (error) {
       console.error("Error during OpenAI summarization:", error);
       return "Error during OpenAI summarization";
