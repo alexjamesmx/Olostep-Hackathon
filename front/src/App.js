@@ -8,8 +8,8 @@ function SearchPage() {
   ];
 
   const [labels, setLabels] = useState([]);
-
-  const summary = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam nec purus nec nunc ultricies ultricies. Nullam nec purus nec nunc ultricies ultricies.';
+  const [summary, setSummary] = useState('Lorem ipsum dolor sit amet...');
+  const [url, setUrl] = useState('');
 
   const labelsData = [
     {text: 'Technology'},
@@ -24,16 +24,34 @@ function SearchPage() {
       color: colors[index % colors.length] // Rotate through colors
     }));
     setLabels(updatedLabels);
-  }, []); // Empty dependency array ensures this runs once when the component mounts
+  }, []);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    const response = await fetch('', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ url }),
+    });
+
+    const data = await response.json();
+    setSummary(data.summary);
+    setLabels(data.labels);
+  };
 
   return (
     <div className="flex flex-col justify-center items-center min-h-screen bg-gray-100 p-4">
-      <h1 className="text-4xl font-semibold text-gray-800 mb-8">Easy  webscraping</h1>
-      <form className="w-full max-w-lg flex items-center mb-8">
+      <h1 className="text-4xl font-semibold text-gray-800 mb-8">Easy Web Scraping</h1>
+      <form className="w-full max-w-lg flex items-center mb-8" onSubmit={handleSubmit}>
         <input
           type="text"
           className="flex-grow px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           placeholder="Enter the URL for webscraping"
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
         />
         <button
           type="submit"
