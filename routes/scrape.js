@@ -80,6 +80,7 @@ module.exports = (context) => {
       console.log("Saving summary to database");
 
       const summaryData = new Website({
+        websiteLink: url,
         summary: openAISummary,
       });
 
