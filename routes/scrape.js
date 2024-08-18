@@ -8,14 +8,6 @@ const dotenv = require("dotenv");
 
 dotenv.config();
 //
-const browser = await chromium.launch({
-  executablePath: "/app/browsers/chromium-1129/chrome-linux/chrome",
-});
-
-const context = await browser.newContext({
-  ignoreHTTPSErrors: true,
-  bypassCSP: true,
-});
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -31,7 +23,14 @@ router.post("/", async (req, res) => {
   let page;
 
   try {
-    // Create a new page instance for each request
+    const browser = await chromium.launch({
+      executablePath: "/app/browsers/chromium-1129/chrome-linux/chrome",
+    });
+
+    const context = await browser.newContext({
+      ignoreHTTPSErrors: true,
+      bypassCSP: true,
+    });
     page = await context.newPage();
     await page.goto(url, { waitUntil: "networkidle" });
 
@@ -102,7 +101,7 @@ router.post("/", async (req, res) => {
     res.status(500).json({ error: "Error during scraping" });
   } finally {
     if (page) {
-      await page.close(); // Close the page to reset the state for the next request
+      await page.close();
     }
   }
 });
