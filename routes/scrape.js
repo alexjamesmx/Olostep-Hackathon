@@ -25,8 +25,12 @@ router.post("/", async (req, res) => {
     const browser = await chromium.launch({
       executablePath: "/app/browsers/chromium-1129/chrome-linux/chrome",
     });
-    const page = await browser.newPage();
-    await page.goto(url);
+    const context = await browser.newContext({
+      ignoreHTTPSErrors: true,
+    });
+
+    const page = await context.newPage();
+    await page.goto(url, { waitUntil: "load" });
 
     const title = await page.title();
     const description = await page.$eval(
