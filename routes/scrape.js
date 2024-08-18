@@ -21,14 +21,14 @@ router.post("/", async (req, res) => {
     return res.status(400).json({ error: "URL is required" });
   }
 
-  try {
-    const browser = await chromium.launch({
-      executablePath: "/app/browsers/chromium-1129/chrome-linux/chrome",
-    });
-    const context = await browser.newContext({
-      ignoreHTTPSErrors: true,
-    });
+  const browser = await chromium.launch({
+    executablePath: "/app/browsers/chromium-1129/chrome-linux/chrome",
+  });
+  const context = await browser.newContext({
+    ignoreHTTPSErrors: true,
+  });
 
+  try {
     const page = await context.newPage();
     await page.goto(url, { waitUntil: "load" });
 
@@ -78,8 +78,6 @@ router.post("/", async (req, res) => {
       filteredLists
     );
 
-    await browser.close();
-
     console.log("Saving summary to database");
 
     const summaryData = new Website({
@@ -102,7 +100,10 @@ router.post("/", async (req, res) => {
     });
   } catch (error) {
     console.error("Error during scraping:", error);
+
     res.status(500).json({ error: "Error during scraping" });
+  } finally {
+    await browser.close();
   }
 });
 async function cleanAndFilterContent(textArray) {
