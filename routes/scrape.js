@@ -22,7 +22,9 @@ router.post("/", async (req, res) => {
   }
 
   try {
-    const browser = await chromium.launch((executablePath = "/browsers"));
+    const browser = await chromium.launch(
+      (executablePath = "/app/browsers/chromium-1129/chrome-linux/chrome")
+    );
     const page = await browser.newPage();
     await page.goto(url);
 
