@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is a React application (Front-end only) developed as part of the Olostep hackathon. The project is designed to scrape and analyze data from user-provided URLs and display relevant information about the website using AI. The frontend is built using React and Tailwind CSS, while the backend is hosted on a separate GitHub repository.
+This is an express application (back-end only) developed as part of the Olostep hackathon. The project is designed to scrape and analyze data from user-provided URLs and display relevant information about the website using AI by using playwright tool.
 
 ## Features
 
@@ -18,35 +18,9 @@ This is a React application (Front-end only) developed as part of the Olostep ha
 - **Testing**: Playwright (used for testing and automation), Puppeteer
 - **Deployment**: Frontend-Vercel, Backend-Heroku 
 
-## Backend Repository
+## Frontend Repository
 
-The backend for this project is hosted on a separate GitHub repository. You can find it [here](https://github.com/alexjamesmx/Olostep-Hackathon.git).
-
-## Installation
-
-To get started with the project, follow these steps:
-
-1. **Clone the repository**:
-    ```bash
-    git clone https://github.com/yourusername/your-repo.git
-    ```
-
-2. **Navigate to the project directory**:
-    ```bash
-    cd your-repo
-    ```
-
-3. **Install dependencies**:
-    ```bash
-    npm install
-    ```
-
-4. **Start the development server**:
-    ```bash
-    npm start
-    ```
-
-    The application will be available at `http://localhost:3000`.
+The frontend for this project is hosted on a separate GitHub repository. You can find it [here](https://github.com/alexjamesmx/Olostep-Hackathon-Front.git).
 
 ## Team
 
