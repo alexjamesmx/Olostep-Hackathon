@@ -12,9 +12,11 @@ const browser = chromium.launch({
   executablePath: "/app/browsers/chromium-1129/chrome-linux/chrome",
 });
 
-const context = browser.newContext({
-  ignoreHTTPSErrors: true,
-  bypassCSP: true,
+const context = browser.then((browser) => {
+  return browser.newContext({
+    ignoreHTTPSErrors: true,
+    bypassCSP: true,
+  });
 });
 
 const openai = new OpenAI({
