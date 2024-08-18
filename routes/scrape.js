@@ -181,6 +181,16 @@ module.exports = (context) => {
     }
   });
 
+  router.get("/", async (req, res) => {
+    try {
+      const websites = await Website.find();
+      res.json(websites);
+    } catch (error) {
+      console.error("Error fetching websites:", error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  });
+
   async function cleanAndFilterContent(textArray) {
     const cleanedTextArray = textArray
       .map((text) => {
