@@ -5,9 +5,6 @@ const OpenAI = require("openai");
 const stopword = require("stopword");
 const Website = require("../db/models/Website");
 
-const tf = require("@tensorflow/tfjs");
-
-const use = require("@tensorflow-models/universal-sentence-encoder");
 const dotenv = require("dotenv");
 
 dotenv.config();
@@ -15,12 +12,6 @@ dotenv.config();
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
   dangerouslyAllowBrowser: true,
-});
-
-let model;
-use.load().then((m) => {
-  model = m;
-  console.log("Universal Sentence Encoder model loaded.");
 });
 
 router.post("/", async (req, res) => {
@@ -68,6 +59,18 @@ router.post("/", async (req, res) => {
         .filter((text) => text.length > 0)
     );
 
+    // Scrape images from <img src=... />
+    const imgs = await page.$$eval("img", (elements) =>
+      elements.map((el) => el.src || el.getAttribute("data-src"))
+    );
+
+    // Sub links from the website <a href=... />
+    const subSites = await page.$$eval("a", (elements) =>
+      elements
+        .map((el) => el.href)
+        .filter((href) => href !== null && href !== "")
+    );
+
     const filteredHeadings = await cleanAndFilterContent(headings);
     const filteredParagraphs = await cleanAndFilterContent(paragraphs);
     const filteredLists = await cleanAndFilterContent(lists);
@@ -79,6 +82,7 @@ router.post("/", async (req, res) => {
       description,
       filteredHeadings,
       filteredLists
+      // imgs
     );
 
     await browser.close();
@@ -108,6 +112,7 @@ router.post("/", async (req, res) => {
     res.status(500).json({ error: "Error during scraping" });
   }
 });
+
 async function cleanAndFilterContent(textArray) {
   // Step 1: Clean the text
   const cleanedTextArray = textArray
