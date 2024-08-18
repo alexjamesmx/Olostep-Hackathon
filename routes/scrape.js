@@ -7,12 +7,12 @@ const Website = require("../db/models/Website");
 const dotenv = require("dotenv");
 
 dotenv.config();
-//
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
   dangerouslyAllowBrowser: true,
 });
+
 router.post("/", async (req, res) => {
   const url = req.body.url;
 
@@ -22,15 +22,16 @@ router.post("/", async (req, res) => {
 
   let page;
 
-  try {
-    const browser = await chromium.launch({
-      executablePath: "/app/browsers/chromium-1129/chrome-linux/chrome",
-    });
+  const browser = await chromium.launch({
+    executablePath: "/app/browsers/chromium-1129/chrome-linux/chrome",
+  });
 
-    const context = await browser.newContext({
-      ignoreHTTPSErrors: true,
-      bypassCSP: true,
-    });
+  const context = await browser.newContext({
+    ignoreHTTPSErrors: true,
+    bypassCSP: true,
+  });
+
+  try {
     page = await context.newPage();
     await page.goto(url, { waitUntil: "networkidle" });
 
@@ -100,9 +101,9 @@ router.post("/", async (req, res) => {
     console.error("Error during scraping:", error);
     res.status(500).json({ error: "Error during scraping" });
   } finally {
-    if (page) {
-      await page.close();
-    }
+    page.close();
+    context.close();
+    browser.close();
   }
 });
 async function cleanAndFilterContent(textArray) {
