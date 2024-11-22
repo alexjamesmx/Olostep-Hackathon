@@ -18,8 +18,14 @@ This is an express application (back-end only) developed as part of the Olostep 
 - **Testing**: Playwright (used for testing and automation), Puppeteer
 - **Deployment**: Frontend-Vercel, Backend-Heroku 
 
-## Frontend Repository
 
+## How to run in Heroku
+Install this buildpacks and follow their respective readmes
+- ** https://github.com/Thomas-Boi/heroku-playwright-python-browsers
+- ** https://github.com/mxschmitt/heroku-playwright-buildpack.git
+
+
+## Frontend Repository
 The frontend for this project is hosted on a separate GitHub repository. You can find it [here](https://github.com/alexjamesmx/Olostep-Hackathon-Front.git).
 
 ## Team
